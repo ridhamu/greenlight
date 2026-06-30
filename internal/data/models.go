@@ -1,3 +1,4 @@
+// Package data
 package data
 
 import (
