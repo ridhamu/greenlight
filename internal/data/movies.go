@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"time"
 
+	"github.com/lib/pq"
 	"github.com/ridhamu/greenlight/internal/validator"
 )
 
@@ -40,6 +41,19 @@ func ValidateMovie(v *validator.Validator, movie *Movie) {
 }
 
 func (m MovieModel) Insert(movie *Movie) error {
+	stmt := `
+		INSERT INTO movies (title, year, runtime, genres)
+		VALUES ($1, $2, $3, $4)
+		RETURNING id, created_at, version
+	`
+
+	args := []any{movie.Title, movie.Year, movie.Runtime, pq.Array(movie.Genres)}
+
+	err := m.DB.QueryRow(stmt, args...).Scan(&movie.ID, &movie.CreatedAt, &movie.Version)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
