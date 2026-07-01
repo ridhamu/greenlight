@@ -21,3 +21,9 @@ RETURNING id, created_at, version
 -- Fetching a Movie
 SELECT id, created_at, title, year, runtime, genres, version FROM movies WHERE id = $1
 
+-- update a movie
+UPDATE movies
+SET title = $1, year = $2, runtime = $3, genres = $4, version = version + 1
+WHERE id = $5
+RETURNING version
+
