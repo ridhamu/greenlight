@@ -42,11 +42,7 @@ func ValidateMovie(v *validator.Validator, movie *Movie) {
 }
 
 func (m MovieModel) Insert(movie *Movie) error {
-	stmt := `
-		INSERT INTO movies (title, year, runtime, genres)
-		VALUES ($1, $2, $3, $4)
-		RETURNING id, created_at, version
-	`
+	stmt := ` INSERT INTO movies (title, year, runtime, genres) VALUES ($1, $2, $3, $4) RETURNING id, created_at, version `
 
 	args := []any{movie.Title, movie.Year, movie.Runtime, pq.Array(movie.Genres)}
 
@@ -80,11 +76,7 @@ func (m MovieModel) Get(id int64) (*Movie, error) {
 }
 
 func (m MovieModel) Update(movie *Movie) error {
-	stmt := `
-			UPDATE movies
-			SET title = $1, year = $2, runtime = $3, genres = $4, version = version + 1
-			WHERE id = $5
-			RETURNING version`
+	stmt := ` UPDATE movies SET title = $1, year = $2, runtime = $3, genres = $4, version = version + 1 WHERE id = $5 RETURNING version`
 
 	args := []any{
 		movie.Title,
@@ -98,5 +90,25 @@ func (m MovieModel) Update(movie *Movie) error {
 }
 
 func (m MovieModel) Delete(id int64) error {
+	if id < 1 {
+		return ErrNotFoundRecord
+	}
+
+	stmt := ` DELETE FROM movies WHERE id = $1 `
+
+	r, err := m.DB.Exec(stmt, id)
+	if err != nil {
+		return err
+	}
+
+	affectedRow, err := r.RowsAffected()
+	if err != nil {
+		return err
+	}
+
+	if affectedRow == 0 {
+		return ErrNotFoundRecord
+	}
+
 	return nil
 }
