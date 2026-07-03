@@ -6,7 +6,10 @@ import (
 	"errors"
 )
 
-var ErrNotFoundRecord = errors.New("record not found")
+var (
+	ErrNotFoundRecord = errors.New("record not found")
+	ErrEditConflict   = errors.New("edit conflict")
+)
 
 type Models struct {
 	Movies MovieModel

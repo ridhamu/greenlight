@@ -76,7 +76,7 @@ func (m MovieModel) Get(id int64) (*Movie, error) {
 }
 
 func (m MovieModel) Update(movie *Movie) error {
-	stmt := ` UPDATE movies SET title = $1, year = $2, runtime = $3, genres = $4, version = version + 1 WHERE id = $5 RETURNING version`
+	stmt := `UPDATE movies SET title = $1, year = $2, runtime = $3, genres = $4, version = version + 1 WHERE id = $5 AND version = $6 RETURNING version`
 
 	args := []any{
 		movie.Title,
@@ -84,9 +84,19 @@ func (m MovieModel) Update(movie *Movie) error {
 		movie.Runtime,
 		pq.Array(movie.Genres),
 		movie.ID,
+		movie.Version,
 	}
 
-	return m.DB.QueryRow(stmt, args...).Scan(&movie.Version)
+	err := m.DB.QueryRow(stmt, args...).Scan(&movie.Version)
+	if err != nil {
+		switch {
+		case errors.Is(err, ErrNotFoundRecord):
+			return ErrEditConflict
+		default:
+			return err
+		}
+	}
+	return nil
 }
 
 func (m MovieModel) Delete(id int64) error {
