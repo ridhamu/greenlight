@@ -2,6 +2,7 @@
 package data
 
 import (
+	"context"
 	"database/sql"
 	"errors"
 	"time"
@@ -42,11 +43,14 @@ func ValidateMovie(v *validator.Validator, movie *Movie) {
 }
 
 func (m MovieModel) Insert(movie *Movie) error {
-	stmt := ` INSERT INTO movies (title, year, runtime, genres) VALUES ($1, $2, $3, $4) RETURNING id, created_at, version `
+	stmt := `INSERT INTO movies (title, year, runtime, genres) VALUES ($1, $2, $3, $4) RETURNING id, created_at, version `
 
 	args := []any{movie.Title, movie.Year, movie.Runtime, pq.Array(movie.Genres)}
 
-	err := m.DB.QueryRow(stmt, args...).Scan(&movie.ID, &movie.CreatedAt, &movie.Version)
+	ctx, cf := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cf()
+
+	err := m.DB.QueryRowContext(ctx, stmt, args...).Scan(&movie.ID, &movie.CreatedAt, &movie.Version)
 	if err != nil {
 		return err
 	}
@@ -63,7 +67,10 @@ func (m MovieModel) Get(id int64) (*Movie, error) {
 
 	var movie Movie
 
-	err := m.DB.QueryRow(stmt, id).Scan(&movie.ID, &movie.CreatedAt, &movie.Title, &movie.Year, &movie.Runtime, pq.Array(&movie.Genres), &movie.Version)
+	ctx, cf := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cf()
+
+	err := m.DB.QueryRowContext(ctx, stmt, id).Scan(&movie.ID, &movie.CreatedAt, &movie.Title, &movie.Year, &movie.Runtime, pq.Array(&movie.Genres), &movie.Version)
 	if err != nil {
 		switch {
 		case errors.Is(err, sql.ErrNoRows):
@@ -87,7 +94,10 @@ func (m MovieModel) Update(movie *Movie) error {
 		movie.Version,
 	}
 
-	err := m.DB.QueryRow(stmt, args...).Scan(&movie.Version)
+	ctx, cf := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cf()
+
+	err := m.DB.QueryRowContext(ctx, stmt, args...).Scan(&movie.Version)
 	if err != nil {
 		switch {
 		case errors.Is(err, ErrNotFoundRecord):
@@ -106,7 +116,10 @@ func (m MovieModel) Delete(id int64) error {
 
 	stmt := ` DELETE FROM movies WHERE id = $1 `
 
-	r, err := m.DB.Exec(stmt, id)
+	ctx, cf := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cf()
+
+	r, err := m.DB.ExecContext(ctx, stmt, id)
 	if err != nil {
 		return err
 	}
