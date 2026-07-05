@@ -1,6 +1,19 @@
 package data
 
-import "github.com/ridhamu/greenlight/internal/validator"
+import (
+	"slices"
+	"strings"
+
+	"github.com/ridhamu/greenlight/internal/validator"
+)
+
+type Metadata struct {
+	CurrentPage  int `json:"current_page,omitempty"`
+	PageSize     int `json:"page_size,omitempty"`
+	FirstPage    int `json:"first_page,omitempty"`
+	LastPage     int `json:"last_page,omitempty"`
+	TotalRecords int `json:"total_records,omitempty"`
+}
 
 type Filters struct {
 	Page         int
@@ -16,4 +29,42 @@ func ValidateFilters(v *validator.Validator, filters Filters) {
 	v.Check(filters.PageSize <= 100, "page_size", "must be a maximum of 100")
 
 	v.Check(validator.PermittedValues(filters.Sort, filters.SortSafeList...), "sort", "invalid sort value")
+}
+
+func (f *Filters) sortColumn() string {
+	if slices.Contains(f.SortSafeList, f.Sort) {
+		return strings.TrimPrefix(f.Sort, "-")
+	}
+
+	panic("unsafe sort parameter: " + f.Sort)
+}
+
+func (f *Filters) sortDirection() string {
+	if strings.Contains(f.Sort, "-") {
+		return "DESC"
+	}
+
+	return "ASC"
+}
+
+func (f *Filters) limit() int {
+	return f.PageSize
+}
+
+func (f *Filters) offset() int {
+	return (f.Page - 1) * f.PageSize
+}
+
+func CalculateMetadata(totalRecords, page, pageSize int) Metadata {
+	if totalRecords == 0 {
+		return Metadata{}
+	}
+
+	return Metadata{
+		CurrentPage:  page,
+		PageSize:     pageSize,
+		FirstPage:    1,
+		LastPage:     (totalRecords + pageSize - 1) / pageSize,
+		TotalRecords: totalRecords,
+	}
 }
