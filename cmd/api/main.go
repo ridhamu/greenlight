@@ -73,6 +73,7 @@ func main() {
 	err = app.serve()
 	if err != nil {
 		logger.Error(err.Error())
+		logger.Info("i am here")
 		os.Exit(1)
 	}
 }

@@ -1,6 +1,8 @@
 package main
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -20,6 +22,9 @@ func (app *application) serve() error {
 		ErrorLog:     slog.NewLogLogger(app.logger.Handler(), slog.LevelError),
 	}
 
+	// chanel for holding the error from calling method Shutdown(), if one exist
+	shutDownErr := make(chan error)
+
 	// goroutine for checking signal SIGTERM and SIGINT
 	go func() {
 		quitChan := make(chan os.Signal, 1)
@@ -28,11 +33,26 @@ func (app *application) serve() error {
 
 		s := <-quitChan // this is blocking until we recheieved a signal
 
-		app.logger.Info("caught signal", "signal", s.String())
+		app.logger.Info("Shutting down the server", "signal", s.String())
 
-		os.Exit(0)
+		ctx, cf := context.WithTimeout(context.Background(), 30*time.Second)
+		defer cf()
+
+		shutDownErr <- srv.Shutdown(ctx) // if any error occured while trying to do shutdown, we pass that error to channel shutDownErr
 	}()
 
 	app.logger.Info("starting server", "addr", srv.Addr, "env", app.config.env)
-	return srv.ListenAndServe()
+	err := srv.ListenAndServe()
+	if !errors.Is(err, http.ErrServerClosed) {
+		return err
+	}
+
+	// we wait for the actual response from chanel
+	err = <-shutDownErr
+	if err != nil {
+		return err
+	}
+
+	app.logger.Info("stopped server", "add", srv.Addr)
+	return nil
 }
