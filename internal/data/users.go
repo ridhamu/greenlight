@@ -6,17 +6,10 @@ import (
 	"errors"
 	"time"
 
+	"github.com/lib/pq"
 	"github.com/ridhamu/greenlight/internal/validator"
 	"golang.org/x/crypto/bcrypt"
 )
-
-// id bigserial PRIMARY KEY,
-// created_at timestamp(0) with time zone NOT NULL DEFAULT NOW(),
-// name text NOT NULL,
-// email citext UNIQUE NOT NULL,
-// password_hash bytea NOT NULL,
-// activated bool NOT NULL,
-// version integer NOT NULL DEFAULT 1
 
 type User struct {
 	ID        int64     `json:"id"`
@@ -71,7 +64,7 @@ func ValidateEmail(v *validator.Validator, email string) {
 
 func ValidatePasswordPlain(v *validator.Validator, passwordPlain string) {
 	v.Check(passwordPlain != "", "password", "must be provided")
-	v.Check(len(passwordPlain) > 8, "password", "must be more than 8 bytes long")
+	v.Check(len(passwordPlain) >= 8, "password", "must be more than 8 bytes long")
 	v.Check(len(passwordPlain) <= 72, "password", "must not be more than 72 bytes long")
 }
 
@@ -102,8 +95,9 @@ func (u UserModel) Insert(user *User) error {
 
 	err := u.DB.QueryRowContext(ctx, stmt, args...).Scan(&user.ID, &user.CreatedAt, &user.version)
 	if err != nil {
+		var pqError *pq.Error
 		switch {
-		case err.Error() == `pq: duplicate key value violates unique constraint "users_email_key"`:
+		case errors.As(err, &pqError) && pqError.Code == "23505":
 			return ErrDuplicateEmail
 		default:
 			return err
@@ -144,8 +138,9 @@ func (u UserModel) Update(user *User) error {
 
 	err := u.DB.QueryRowContext(ctx, stmt, args...).Scan(&user.version)
 	if err != nil {
+		var pqError *pq.Error
 		switch {
-		case err.Error() == `pq: duplicate key value violates unique constraint "users_email_key"`:
+		case errors.As(err, &pqError) && pqError.Code == "23505":
 			return ErrDuplicateEmail
 		case errors.Is(err, sql.ErrNoRows):
 			return ErrEditConflict
