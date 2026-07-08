@@ -42,3 +42,6 @@ SELECT id, created_at, title, year, runtime, genres, version
 FROM movies
 ORDER BY id
 
+
+-- Insert user
+INSERT INTO users (name, email, password_hash, activated) VALUES ($1, $2, $3, $4) RETURNING id, created_at, version
