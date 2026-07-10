@@ -10,6 +10,7 @@ import (
 
 	_ "github.com/lib/pq" // To register the driver.
 	"github.com/ridhamu/greenlight/internal/data"
+	"github.com/ridhamu/greenlight/internal/mailer"
 )
 
 const version = "1.0.0"
@@ -28,12 +29,20 @@ type config struct {
 		burst   int
 		enabled bool
 	}
+	mailer struct {
+		host     string
+		port     int
+		username string
+		password string
+		sender   string
+	}
 }
 
 type application struct {
 	config config
 	logger *slog.Logger
 	models data.Models
+	mailer mailer.Mailer
 }
 
 func main() {
@@ -48,6 +57,12 @@ func main() {
 	flag.Float64Var(&config.limiter.rps, "limiter-rps", 2, "Rate limiter maximum request per second")
 	flag.IntVar(&config.limiter.burst, "limiter-burst", 4, "Rate limiter maximum burst")
 	flag.BoolVar(&config.limiter.enabled, "limiter-enabled", true, "Enable rate limiter")
+
+	flag.StringVar(&config.mailer.host, "smtp-host", "sandbox.smtp.mailtrap.io", "smtp host")
+	flag.IntVar(&config.mailer.port, "smtp-port", 2525, "smtp port")
+	flag.StringVar(&config.mailer.username, "smtp-username", "eb119bfab9018e", "smtp username")
+	flag.StringVar(&config.mailer.password, "smtp-password", "c97a8ca466e5f0", "smtp password")
+	flag.StringVar(&config.mailer.sender, "smtp-sender", "Greenlight <no-reply@greenlight.alexedwards.net>", "smtp sender")
 
 	flag.Parse()
 
@@ -68,6 +83,7 @@ func main() {
 		config: config,
 		logger: logger,
 		models: data.NewModels(dbPool),
+		mailer: mailer.New(config.mailer.host, config.mailer.port, config.mailer.username, config.mailer.password, config.mailer.sender),
 	}
 
 	err = app.serve()
