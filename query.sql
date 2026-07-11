@@ -45,3 +45,9 @@ ORDER BY id
 
 -- Insert user
 INSERT INTO users (name, email, password_hash, activated) VALUES ($1, $2, $3, $4) RETURNING id, created_at, version
+
+-- insert token
+INSERT INTO tokens (hash, user_id, expiry, scope) VALUES ($1, $2, $3, $4)
+
+-- delete token based on userID and context
+DELETE FROM tokens WHERE scope = $1 AND user_id = $2;
