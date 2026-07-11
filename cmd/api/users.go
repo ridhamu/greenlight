@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 	"net/http"
+	"time"
 
 	"github.com/ridhamu/greenlight/internal/data"
 	"github.com/ridhamu/greenlight/internal/validator"
@@ -51,8 +52,22 @@ func (app *application) registerUserHandler(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
+	// TODO: create a user activation token
+	// and that token to email template
+
+	t, err := app.models.TokenModel.New(user.ID, 3*24*time.Hour, data.ScopeActivation)
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+		return
+	}
+
 	app.background(func() {
-		err = app.mailer.Send(user.Email, "user_welcome.html", user)
+		data := map[string]any{
+			"userID":          user.ID,
+			"activationToken": t.Plaintext,
+		}
+
+		err = app.mailer.Send(user.Email, "user_welcome.html", data)
 		if err != nil {
 			app.logger.Error(err.Error())
 		}
