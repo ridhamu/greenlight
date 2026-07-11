@@ -38,7 +38,15 @@ func (app *application) serve() error {
 		ctx, cf := context.WithTimeout(context.Background(), 30*time.Second)
 		defer cf()
 
-		shutDownErr <- srv.Shutdown(ctx) // if any error occured while trying to do shutdown, we pass that error to channel shutDownErr
+		err := srv.Shutdown(ctx)
+		if err != nil {
+			shutDownErr <- err
+		}
+
+		app.logger.Info("completing background task", "addr", srv.Addr)
+
+		app.wg.Wait()
+		shutDownErr <- nil
 	}()
 
 	app.logger.Info("starting server", "addr", srv.Addr, "env", app.config.env)
