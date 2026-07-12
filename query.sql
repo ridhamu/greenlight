@@ -51,3 +51,20 @@ INSERT INTO tokens (hash, user_id, expiry, scope) VALUES ($1, $2, $3, $4)
 
 -- delete token based on userID and context
 DELETE FROM tokens WHERE scope = $1 AND user_id = $2;
+
+-- getting user info based on token
+SELECT
+	users.id,
+	users.created_at,
+	users.name,
+	users.email,
+	users.password_hash,
+	users.activated,
+	users.version
+FROM
+	users
+	INNER JOIN tokens ON users.id = tokens.user_id
+WHERE
+  tokens.hash = $1
+	AND tokens.scope = $2
+	AND tokens.expiry > $3

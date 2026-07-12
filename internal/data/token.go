@@ -7,6 +7,8 @@ import (
 	"database/sql"
 	"encoding/base32"
 	"time"
+
+	"github.com/ridhamu/greenlight/internal/validator"
 )
 
 const (
@@ -23,6 +25,11 @@ type Token struct {
 
 type TokenModel struct {
 	DB *sql.DB
+}
+
+func ValidateTokenPlainText(v *validator.Validator, tokenPlainText string) {
+	v.Check(tokenPlainText != "", "token", "field must be filled")
+	v.Check(len(tokenPlainText) == 26, "token", "token must be 26 byte long")
 }
 
 func (t TokenModel) New(userID int64, ttl time.Duration, scope string) (*Token, error) {
