@@ -12,15 +12,22 @@ import (
 )
 
 const (
-	ScopeActivation = "activation"
+	ScopeActivation     = "activation"
+	ScopeAuthentication = "authentication"
 )
 
+// example of authentication token send to users
+// {
+// "token": "X3ASTT2CDAN66BACKSCI4SU7SI",
+// "expiry": "2021-01-18T13:00:25.648511827+01:00"
+// }
+
 type Token struct {
-	Plaintext string
-	Hash      []byte
-	UserID    int64
-	Expiry    time.Time
-	Scrope    string
+	Plaintext string    `json:"token"`
+	Hash      []byte    `json:"-"`
+	UserID    int64     `json:"-"`
+	Expiry    time.Time `json:"expiry"`
+	Scrope    string    `json:"-"`
 }
 
 type TokenModel struct {

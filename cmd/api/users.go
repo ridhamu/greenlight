@@ -55,7 +55,7 @@ func (app *application) registerUserHandler(w http.ResponseWriter, r *http.Reque
 	// TODO: create a user activation token
 	// and that token to email template
 
-	t, err := app.models.TokenModel.New(user.ID, 3*24*time.Hour, data.ScopeActivation)
+	t, err := app.models.Token.New(user.ID, 3*24*time.Hour, data.ScopeActivation)
 	if err != nil {
 		app.serverErrorResponse(w, r, err)
 		return
@@ -123,7 +123,7 @@ func (app *application) activateUserHandler(w http.ResponseWriter, r *http.Reque
 	}
 
 	// after updating the users to activation = true success, we want to clear associated toke with that already activated users
-	err = app.models.TokenModel.DeleteAllForUser(user.ID, data.ScopeActivation)
+	err = app.models.Token.DeleteAllForUser(user.ID, data.ScopeActivation)
 	if err != nil {
 		app.serverErrorResponse(w, r, err)
 		return

@@ -50,7 +50,7 @@ func (p *password) Matches(plainTextPassowrd string) (bool, error) {
 	if err != nil {
 		switch {
 		case errors.Is(err, bcrypt.ErrMismatchedHashAndPassword):
-			return false, bcrypt.ErrMismatchedHashAndPassword
+			return false, nil
 		default:
 			return false, err
 		}
