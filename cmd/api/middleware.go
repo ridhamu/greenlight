@@ -1,12 +1,16 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"net"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
 
+	"github.com/ridhamu/greenlight/internal/data"
+	"github.com/ridhamu/greenlight/internal/validator"
 	"golang.org/x/time/rate"
 )
 
@@ -72,6 +76,54 @@ func (app *application) rateLimiter(next http.Handler) http.Handler {
 			}
 			mu.Unlock()
 		}
+		next.ServeHTTP(w, r)
+	})
+}
+
+func (app *application) authenticate(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// telling cache that response of the request could be vary depending on the Authorization header result
+		w.Header().Add("Vary", "Authorization")
+
+		bearerToken := r.Header.Get("Authorization")
+
+		if bearerToken == "" {
+			r = app.contextSetUser(r, data.AnonymousUser)
+			next.ServeHTTP(w, r)
+			return
+		}
+
+		tokenSliced := strings.Split(bearerToken, " ")
+
+		if len(tokenSliced) != 2 || tokenSliced[0] != "Bearer" {
+			app.invalidAuthenticationTokenResponse(w, r)
+			return
+		}
+
+		token := tokenSliced[1]
+
+		v := validator.New()
+
+		data.ValidateTokenPlainText(v, token)
+
+		if !v.Valid() {
+			app.invalidAuthenticationTokenResponse(w, r)
+			return
+		}
+
+		currentUser, err := app.models.Users.GetForToken(data.ScopeAuthentication, token)
+		if err != nil {
+			switch {
+			case errors.Is(err, data.ErrNotFoundRecord):
+				app.invalidAuthenticationTokenResponse(w, r)
+			default:
+				app.serverErrorResponse(w, r, err)
+			}
+			return
+		}
+
+		r = app.contextSetUser(r, currentUser)
+
 		next.ServeHTTP(w, r)
 	})
 }
