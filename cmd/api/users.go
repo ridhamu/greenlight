@@ -52,8 +52,11 @@ func (app *application) registerUserHandler(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	// TODO: create a user activation token
-	// and that token to email template
+	err = app.models.Permissions.AddForUser(user.ID, "movies:read")
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+		return
+	}
 
 	t, err := app.models.Token.New(user.ID, 3*24*time.Hour, data.ScopeActivation)
 	if err != nil {
@@ -61,6 +64,7 @@ func (app *application) registerUserHandler(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
+	// THIS IS BACKGROUND GOROUTINE NON-BLOCKING TASK
 	app.background(func() {
 		data := map[string]any{
 			"userID":          user.ID,

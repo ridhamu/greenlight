@@ -5,6 +5,8 @@ import (
 	"database/sql"
 	"slices"
 	"time"
+
+	"github.com/lib/pq"
 )
 
 type Permissions []string
@@ -15,6 +17,26 @@ func (p Permissions) Include(code string) bool { // why done
 
 type PermissionsModel struct {
 	DB *sql.DB
+}
+
+func (p PermissionsModel) AddForUser(userID int64, codes ...string) error {
+	stmt := `
+			INSERT INTO
+				users_permissions
+			SELECT
+				$1,
+				permissions.id
+			FROM
+				permissions
+			WHERE
+				permissions.code = ANY($2)
+	`
+
+	ctx, cf := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cf()
+
+	_, err := p.DB.ExecContext(ctx, stmt, userID, pq.Array(codes))
+	return err
 }
 
 func (p PermissionsModel) GetAllForUser(userID int64) (Permissions, error) {

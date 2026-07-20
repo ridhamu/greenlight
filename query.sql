@@ -68,3 +68,27 @@ WHERE
   tokens.hash = $1
 	AND tokens.scope = $2
 	AND tokens.expiry > $3
+
+
+-- add user permissions
+INSERT INTO
+	users_permissions
+SELECT
+	$1,
+	permissions.id
+FROM
+	permissions
+WHERE
+	permissions.code = ANY()
+
+
+-- look user's permissions
+SELECT
+	email,
+	code
+FROM
+	users
+	INNER JOIN users_permissions ON users.id = users_permissions.user_id
+	INNER JOIN permissions ON users_permissions.permission_id = permissions.id
+WHERE
+	users.email = 'trump@donald.com';
