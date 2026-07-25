@@ -16,9 +16,10 @@ import (
 	_ "github.com/lib/pq" // To register the driver.
 	"github.com/ridhamu/greenlight/internal/data"
 	"github.com/ridhamu/greenlight/internal/mailer"
+	"github.com/ridhamu/greenlight/internal/vcs"
 )
 
-const version = "1.0.0"
+var version = vcs.Version()
 
 type config struct {
 	port int
