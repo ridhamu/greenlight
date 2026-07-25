@@ -4,7 +4,6 @@ import (
 	"errors"
 	"expvar"
 	"fmt"
-	"net"
 	"net/http"
 	"slices"
 	"strconv"
@@ -14,6 +13,7 @@ import (
 
 	"github.com/ridhamu/greenlight/internal/data"
 	"github.com/ridhamu/greenlight/internal/validator"
+	"github.com/tomasen/realip"
 	"golang.org/x/time/rate"
 )
 
@@ -57,11 +57,12 @@ func (app *application) rateLimiter(next http.Handler) http.Handler {
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if app.config.limiter.enabled {
-			ip, _, err := net.SplitHostPort(r.RemoteAddr)
-			if err != nil {
-				app.serverErrorResponse(w, r, err)
-				return
-			}
+			ip := realip.FromRequest(r)
+			// ip, _, err := net.SplitHostPort(r.RemoteAddr)
+			// if err != nil {
+			// 	app.serverErrorResponse(w, r, err)
+			// 	return
+			// }
 
 			mu.Lock()
 			if _, ok := clients[ip]; !ok {

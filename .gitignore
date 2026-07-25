@@ -38,3 +38,6 @@ temp/
 
 test.html
 .envrc
+temp.txt
+
+bin/
