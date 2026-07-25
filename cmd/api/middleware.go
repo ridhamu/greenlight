@@ -2,10 +2,12 @@ package main
 
 import (
 	"errors"
+	"expvar"
 	"fmt"
 	"net"
 	"net/http"
 	"slices"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -202,5 +204,72 @@ func (app *application) enableCORS(next http.Handler) http.Handler {
 		}
 
 		next.ServeHTTP(w, r)
+	})
+}
+
+// custom http.ResponseWriter wrapper so that we map http response code
+type metricsResponseWriter struct {
+	wrapped       http.ResponseWriter
+	statusCode    int
+	headerWritten bool
+}
+
+func newMetricsResponseWriter(w http.ResponseWriter) *metricsResponseWriter {
+	return &metricsResponseWriter{
+		wrapped:    w,
+		statusCode: http.StatusOK,
+	}
+}
+
+func (mw *metricsResponseWriter) Header() http.Header {
+	return mw.wrapped.Header()
+}
+
+// Write([]byte) (int, error)
+func (mw *metricsResponseWriter) Write(b []byte) (int, error) {
+	mw.headerWritten = true
+	return mw.wrapped.Write(b)
+}
+
+// WriteHeader(statusCode int)
+func (mw *metricsResponseWriter) WriteHeader(statusCode int) {
+	mw.wrapped.WriteHeader(statusCode)
+
+	if !mw.headerWritten {
+		mw.statusCode = statusCode
+		mw.headerWritten = true
+	}
+}
+
+func (mw *metricsResponseWriter) Unwrap() http.ResponseWriter {
+	return mw.wrapped
+}
+
+func (app *application) metrics(next http.Handler) http.Handler {
+	// when registered here, variable only registered at the first chain
+	var (
+		totalRequestReceived            = expvar.NewInt("total_request_received")
+		totalResponseSent               = expvar.NewInt("total_response_sent")
+		totalProcessingTimeMicroseconds = expvar.NewInt("total_processing_time_µs")
+		totalResponseSentByStatus       = expvar.NewMap("total_response_sent_by_status")
+	)
+
+	expvar.Publish("total_active_request", expvar.Func(func() any {
+		return totalRequestReceived.Value() - totalResponseSent.Value()
+	}))
+
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		start := time.Now()
+		totalRequestReceived.Add(1)
+
+		mrw := newMetricsResponseWriter(w)
+
+		next.ServeHTTP(mrw, r)
+
+		totalResponseSentByStatus.Add(strconv.Itoa(mrw.statusCode), 1)
+
+		totalResponseSent.Add(1)
+		duration := time.Since(start).Microseconds()
+		totalProcessingTimeMicroseconds.Add(duration)
 	})
 }
