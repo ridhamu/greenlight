@@ -1,0 +1,8 @@
+{
+  email ridhauwu@gmail.com
+}
+
+152.42.172.170 {
+    respond  /debug/* "Not Permitted" 403
+    reverse_proxy localhost:4000
+}
