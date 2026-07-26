@@ -82,8 +82,24 @@ remove-vendor:
 build/api:
 	@echo "building cmd/api"
 	go build -ldflags='-s' -o=./bin/api ./cmd/api
-	GOOS=linux GOARCH=amd64 go build -ldflags='-s' -o=./bin/linux_amd64/bin ./cmd/api/
+	GOOS=linux GOARCH=amd64 go build -ldflags='-s' -o=./bin/linux_amd64/api ./cmd/api/
 
+# ====================================================================================
+# GREENLIGHT PRODUCTION
+# ====================================================================================
+production_host_ip=152.42.172.170
+
+## production/connect: connect to production server
+.PHONY: production/connect
+production/connect:
+	ssh greenlight@${production_host_ip}
+
+## production/deploy/api: deploy the api to production
+.PHONY: production/deploy/api
+production/deploy/api:
+	rsync -P ./bin/linux_amd64/api greenlight@${production_host_ip}:~
+	rsync -rP --delete ./migrations greenlight@${production_host_ip}:~
+	ssh -t greenlight@${production_host_ip} 'migrate -path ~/migrations -database $$GREENLIGHT_DB_DSN up'
 
 # ====================================================================================
 # RUN PROD
